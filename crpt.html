@@ -1,0 +1,229 @@
+<head>
+<meta charset="utf-8">
+<title>cr</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; background:#f7f7f7; }
+  #pasteZone { border:2px dashed #888; padding:10px; min-height:120px; background:#fff; margin-bottom:20px; }
+  table { border-collapse: collapse; margin-top:10px; width:100%; background:#fff; }
+  th, td { border:1px solid #ffffff; padding:6px 10px; font-size:14px; }
+  th { background:#e8e8e8; }
+  .match { background:#ffffe0; }
+  td:first-child, th:first-child { width: 50px; text-align: center; white-space: nowrap;}
+  #refreshBtn {
+width: 100%;
+  padding: 6px 0;
+  font-size: 16px;
+  background: #c0c0c0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+#refreshBtn:hover {
+  background: #45a049;
+}
+</style>
+</head>
+<body>
+    <button id="refreshBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" viewBox="0 0 16 16">
+          <path d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 1 1 .908-.418A4 4 0 1 0 8 4V1.5a.5.5 0 0 1 1 0V5a.5.5 0 0 1-.5.5H4a.5.5 0 0 1 0-1h3z"/>
+        </svg>
+      </button>
+<div id="pasteZone" contenteditable="true"></div>
+
+
+<div id="summary"></div>
+
+<script>
+// cfg
+const DESC_COL = 7;   // ref
+const AMOUNT_COL = 8; // value
+const KEYWORDS = [
+  
+  "binance","binance.com","BNB",
+  "kraken","kraken.com",
+  "coinbase","coinbase.com",
+  "bitstamp","bitstamp.net",
+  "bitfinex","bitfinex.com",
+  "bittrex","bittrex.com",
+  "gate.io","gateio.com",
+  "bybit","bybit.com",
+  "crypto.com","crypto.com",
+  "gemini","gemini.com",
+  "okx","okx.com",
+  "bitpanda","bitpanda.com",
+  "bitget","bitget.com",
+  "mexc","mexc.com",
+  "uniswap","uniswap.org",
+  "pancakeswap","pancakeswap.finance",
+  "sushiswap","sushiswap.org",
+  "1inch","1inch.io",
+  "debank","debank.com",
+  "aave","aave.com",
+  "compound","compound.finance",
+  "makerdao","makerdao.com",
+  "yearn","yearn.finance",
+  "curve","curve.fi",
+  "balancer","balancer.fi",
+  "safemoon","safemoon.net",
+  "shiba inu","shibatoken.com",
+  "dogecoin","dogecoin.com",
+  "litecoin","litecoin.org",
+  "solana","solana.com",
+  "polygon","polygon.technology",
+  "avalanche","ava labs",
+  "fantom","fantom.foundation",
+  "terra","terra.money",
+  "cosmos","cosmos.network",
+  "polkadot","polkadot.network",
+  "kusama","kusama.network",
+  "near","near.org",
+  "arbitrum","arbitrum.org",
+  "optimism","optimism.io",
+  "zkSync","zksync.io",
+  "immutable x","immutable.com",
+  "opensea","opensea.io",
+  "rarible","rarible.com",
+  "foundation","foundation.app",
+  "superrare","superrare.com",
+  "knownorigin","knownorigin.io",
+  "makersplace","makersplace.com",
+  "async art","async.art",
+  "nifty gateway","niftygateway.com",
+  "zora","zora.co",
+  "mintable","mintable.app",
+  "looksrare","looksrare.org",
+  "x2y2","x2y2.io",
+  "seaport","seaport.xyz",
+  "blur","blur.io",
+  "sudomint","sudomint.xyz",
+  "manifold","manifold.xyz",
+  "mintgate","mintgate.xyz",
+  "mintbase","mintbase.io",
+  "niftykit","niftykit.com",
+  "mintplex","mintplex.xyz",
+  "Bitcoin","BTC","XBT","₿",
+  "Ethereum","ETH",
+  "Tether","USDT",
+  "XRP","XRP",
+  "BNB","BNB",
+  "Solana","SOL",
+  "Polygon","MATIC",
+  "Avalanche","AVAX",
+  "Fantom","FTM",
+  "Terra","LUNA",
+  "Cosmos","ATOM",
+  "Polkadot","DOT",
+  "Kusama","KSM",
+  "NEAR Protocol","NEAR",
+  "Arbitrum","ARB",
+  "Optimism","OP",
+  "zkSync","ZKS",
+  "Immutable X","IMX",
+  "Dogecoin","DOGE",
+  "Litecoin","LTC",
+  "Shiba Inu","SHIB",
+  "Chainlink","LINK",
+  "Cardano","ADA",
+  "Bitcoin Cash","BCH",
+  "EOS","EOS",
+  "DASH","DASH",
+  "Ethereum Classic","ETC",
+  "Gridcoin","GRC",
+  "Nano","NANO",
+  "NEO","NEO",
+  "Namecoin","NMC",
+  "NXT","NXT",
+  "PotCoin","POT",
+  "Peercoin","PPC",
+  "Titcoin","TIT",
+  "USD Coin","USDC",
+  "Revolut", "Paypal"
+];
+
+
+function parseClipboard(html, text) {
+  let rows = [];
+  if (html) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const table = doc.querySelector("table");
+    if (table) {
+      for (const tr of table.rows) {
+        rows.push([...tr.cells].map(td => td.innerText.trim()));
+      }
+      return rows;
+    }
+  }
+  if (text) {
+    rows = text.split(/\r?\n/).map(line => line.split("\t"));
+  }
+  return rows;
+}
+
+function parseAmount(str) {
+  if (!str) return 0;
+  // Remove all non-numeric characters except . , -
+  let cleaned = str.replace(/[^0-9.,-]/g, "").replace(",", ".");
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+}
+
+function analyze(rows) {
+  const results = {};
+  rows.forEach((r, idx) => {
+    const desc = r[DESC_COL] || "";
+    const amount = parseAmount(r[AMOUNT_COL]);
+    for (const kw of KEYWORDS) {
+      if (desc.toLowerCase().includes(kw.toLowerCase())) {
+        if (!results[kw]) results[kw] = { count: 0, sum: 0, items: [] };
+        results[kw].count++;
+        results[kw].sum += amount;
+        results[kw].items.push({ row: idx + 1, desc, amount });
+      }
+    }
+  });
+  return results;
+}
+
+function renderSummary(results) {
+  const container = document.getElementById("summary");
+  container.innerHTML = "";
+  if (Object.keys(results).length === 0) {
+    container.textContent = "No matches";
+    return;
+  }
+  for (const [kw, data] of Object.entries(results)) {
+    const table = document.createElement("table");
+    table.innerHTML = `
+      <tr><th colspan="3">${kw.toUpperCase()} — ${data.count} transactions, totalling: £${data.sum.toFixed(2)}</th></tr>
+      <tr><th>Row</th><th>Value</th><th>Desc:</th></tr>
+    `;
+    data.items.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${item.row}</td><td>£${item.amount.toFixed(2)}</td><td>${item.desc}</td>`;
+      table.appendChild(tr);
+    });
+    container.appendChild(table);
+  }
+}
+
+document.getElementById("pasteZone").addEventListener("paste", e => {
+  e.preventDefault();
+  const cb = e.clipboardData || window.clipboardData;
+  const html = cb.getData("text/html");
+  const text = cb.getData("text/plain");
+  const rows = parseClipboard(html, text);
+  const results = analyze(rows);
+  renderSummary(results);
+});
+
+document.getElementById("refreshBtn").addEventListener("click", () => {
+    location.reload();
+  });
+
+</script>
+
+</body>
+</html>
