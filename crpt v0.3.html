@@ -1,0 +1,107 @@
+<head>
+  <meta charset="UTF-8">
+  <title>crpt v0.3</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+    <div id="totals" v-show="turnover.ofAccount.count > 0">
+        <p>{{ VAULT.length }} transactions</p>
+        <p>Turnover: {{ formatPound(turnover.ofAccount.total) }}</p>
+        <p>Internal turnover: {{ formatPound(turnover.ofInternal.total) }} 
+
+        </p>
+        <p>Turnover excluding internal: {{ 
+            formatPound(
+                turnover.ofAccount.total - turnover.ofInternal.total
+            ) 
+        }}
+        </p>
+        <p>Crypto activity: 
+            {{ turnover.ofCrypto.creditCount }}x credit
+            {{ formatPound(turnover.ofCrypto.credits) }} +
+            {{ turnover.ofCrypto.debitCount }}x debit
+            {{ formatPound(turnover.ofCrypto.debits) }} =
+            {{ turnover.ofCrypto.count }}x transactions, totalling
+            {{formatPound(turnover.ofCrypto.total)}}       
+        </p> 
+
+        <p>Crypto activity represents 
+            {{ 
+                formatPound(calculatePercentage(
+                turnover.ofCrypto.total, 
+                turnover.ofAccount.total - turnover.ofInternal.total
+                )) 
+            }}
+            % of account turnover.</p>
+
+        <p>Crypto activity included {{ crypto.includedKeywords.join(", ") }}.</p>
+        <div id="inclusions">
+            <div class="tag" v-for="(row, index) in crypto.includedKeywords" :key="index">
+                {{ row }}
+            <span class="close" @click="keywordSwitch(crypto.includedKeywords, crypto.excludedKeywords, index)">×</span>
+            </div>
+        </div>
+
+        <div id="exclusions">
+            <div class="tag excluded" v-for="(row, index) in crypto.excludedKeywords" :key="index">
+                {{ row }}
+            <span class="close" @click="keywordSwitch(crypto.excludedKeywords, crypto.includedKeywords, index)">×</span>
+        </div>
+
+        </div>
+
+    </div>
+
+    <div id="infoPanel">
+        <div id="accounts">
+            <div class="account" v-for="(account, i) in internal.uniqueAccounts" :key="i">
+                <p>Account #{{ i + 1 }}: {{ account }}</p>
+            </div>
+        </div>
+    </div>
+    <div id="pasteZone" @paste="handlePaste" v-show="turnover.ofAccount.count == 0">Paste data here</div>
+    <div id="summary">
+
+
+        <table v-show="crypto.rowsWithCrypto.length > 0">
+            <thead>
+                <th colspan="3">Transactions with crypto:</th>
+            </thead>
+            <tbody>
+                <tr v-for="(item, index) in crypto.rowsWithCrypto" :key="index">
+                    <td>
+                        <button @click="excludeRow(index)" title="No">No</button>
+                    </td>
+                    <td> {{ item[DESC_COL] }} </td>
+                    <td :class="{ credit: item[AMOUNT_COL] > 0, debit: item[AMOUNT_COL] < 0 }">
+                    {{ formatPound(item[AMOUNT_COL]) }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <table v-show="crypto.rowsWithoutCrypto.length > 0">
+            <thead>
+                <th colspan="3">Transactions without crypto:</th>
+            </thead>
+            <tbody>
+                <tr v-for="(item, index) in crypto.rowsWithoutCrypto" :key="index">
+                    <td>
+                        <button @click="includeRow(index)" title="No">Yes</button>
+                    </td>
+                    <td> {{ item[DESC_COL] }} </td>
+                    <td :class="{ credit: item[AMOUNT_COL] > 0, debit: item[AMOUNT_COL] < 0 }">
+                    {{ formatPound(item[AMOUNT_COL]) }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script src="vue.global.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
